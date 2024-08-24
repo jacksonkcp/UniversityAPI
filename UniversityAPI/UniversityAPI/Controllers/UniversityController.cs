@@ -1,56 +1,99 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Configuration;
 
 namespace UniversityAPI.Controllers
 {
     [ApiController]
-    [Route("api/university")]
+    [Route("api/[controller]")]
     public class UniversityController : ControllerBase
     {
         private readonly ILogger<UniversityController> _logger;
+        private readonly IConfiguration _configuration;
 
-        public UniversityController(ILogger<UniversityController> logger)
+        public UniversityController(ILogger<UniversityController> logger, IConfiguration configuration)
         {
             _logger = logger;
+            _configuration = configuration;
+
         }
 
         [HttpGet(Name = "GetUniversity")]
-        public IEnumerable<University> Get()
+        public async Task<IEnumerable<University>> Get()
         {
+            var universities = new List<University>();
+
             string format = "dd-MM-yyyy";
 
-            return new List<University>()
+            using (var connection = new SqlConnection(_configuration.GetConnectionString("DefaultConnection")))
             {
-                new University {
-                    Id = 1,
-                    Name = "NUS",
-                    Country = "Singapore",
-                    Webpages = new List<string?>(){"www.test.com", "www.test2.com" },
-                    Created = DateTime.ParseExact("01-01-2024", format, null),
-                    LastModified = DateTime.ParseExact("29-05-2024", format, null),
-                    IsActive = true,
-                    DeletedAt = null,
-                },
-                new University {
-                    Id = 2,
-                    Name = "NTU",
-                    Country = "Singapore",
-                    Webpages = new List<string?>(){"www.testy.com", "www.testy2.com" },
-                    Created = DateTime.ParseExact("03-01-2024", format, null),
-                    LastModified = DateTime.ParseExact("05-07-2024", format, null),
-                    IsActive = true,
-                    DeletedAt = null,
-                },
-                new University {
-                    Id = 3,
-                    Name = "SMU",
-                    Country = "Singapore",
-                    Webpages = new List<string?>(){"www.test123.com", "www.test1234.com" },
-                    Created = DateTime.ParseExact("05-02-2022", format, null),
-                    LastModified = DateTime.ParseExact("12-12-2023", format, null),
-                    IsActive = true,
-                    DeletedAt = null,
+                await connection.OpenAsync();
+                var query = "SELECT Id, Name, Country, Created, webpages, LastModified, IsActive, DeletedAt FROM Universities";
+               
+                using (var command = new SqlCommand(query, connection))
+                {
+                    using (var reader = await command.ExecuteReaderAsync())
+                    {
+                        while (await reader.ReadAsync())
+                        {
+                            
+                            universities.Add(new University
+                            {
+                                Id = reader.GetInt32(reader.GetOrdinal("id")),
+                                Name = reader.GetString(reader.GetOrdinal("name")),
+                                Country = reader.GetString(reader.GetOrdinal("country")),
+                                Webpages = [.. reader.GetString(reader.GetOrdinal("webpages")).Split(';')],
+                                Created = reader.GetDateTime(reader.GetOrdinal("created")),
+                                LastModified = reader.IsDBNull(reader.GetOrdinal("LastModified")) ? (DateTime?)null : reader.GetDateTime(reader.GetOrdinal("LastModified")),
+                                IsActive = reader.GetBoolean(reader.GetOrdinal("IsActive")),
+                                DeletedAt = reader.IsDBNull(reader.GetOrdinal("DeletedAt")) ? (DateTime?)null : reader.GetDateTime(reader.GetOrdinal("DeletedAt"))
+                            });
+                        }
+                    }
                 }
-            }.ToArray();
+            }
+
+            return universities;
+        }
+
+        [HttpGet("{id}")]
+        public async Task<ActionResult<University>> GetUniversityById(int id)
+        {
+            using (var connection = new SqlConnection(_configuration.GetConnectionString("DefaultConnection")))
+            {
+                await connection.OpenAsync();
+                var query = new SqlCommand("SELECT TOP 1 Id, Name, Country, Created, webpages, LastModified, IsActive, DeletedAt FROM Universities WHERE Id=@Id", connection);
+                query.Parameters.Add(
+                    new SqlParameter("@Id", id)
+                );
+
+
+                using (var reader = await query.ExecuteReaderAsync())
+                {
+                    if (await reader.ReadAsync())
+                    {
+                        var university = new University
+                        {
+                            Id = reader.GetInt32(reader.GetOrdinal("id")),
+                            Name = reader.GetString(reader.GetOrdinal("name")),
+                            Country = reader.GetString(reader.GetOrdinal("country")),
+                            Webpages = [.. reader.GetString(reader.GetOrdinal("webpages")).Split(';')],
+                            Created = reader.GetDateTime(reader.GetOrdinal("created")),
+                            LastModified = reader.IsDBNull(reader.GetOrdinal("LastModified")) ? (DateTime?)null : reader.GetDateTime(reader.GetOrdinal("LastModified")),
+                            IsActive = reader.GetBoolean(reader.GetOrdinal("IsActive")),
+                            DeletedAt = reader.IsDBNull(reader.GetOrdinal("DeletedAt")) ? (DateTime?)null : reader.GetDateTime(reader.GetOrdinal("DeletedAt"))
+                        };
+
+                        return Ok(university);
+                    } else
+                    {
+                        return BadRequest($"No university with ID {id} found");
+                    }
+                }
+                
+            }
+
+            
         }
     }
 }

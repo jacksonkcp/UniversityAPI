@@ -1,5 +1,14 @@
+using Microsoft.EntityFrameworkCore;
+
 namespace UniversityAPI
 {
+    public class ApplicationDbContext : DbContext
+    {
+        public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options) { }
+
+        public DbSet<University> Universities { get; set; }
+    }
+
     public class University
     {
         public int Id { get; set; }
