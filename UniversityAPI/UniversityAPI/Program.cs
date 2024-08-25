@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
-using UniversityAPI;
+using UniversityAPI.Data;
+using UniversityAPI.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 

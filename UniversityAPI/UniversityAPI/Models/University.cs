@@ -1,22 +1,19 @@
 using Microsoft.EntityFrameworkCore;
+using System.ComponentModel.DataAnnotations;
 
-namespace UniversityAPI
+namespace UniversityAPI.Models
 {
-    public class ApplicationDbContext : DbContext
-    {
-        public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options) { }
-
-        public DbSet<University> Universities { get; set; }
-    }
-
     public class University
     {
-        public int Id { get; set; }
+        public long Id { get; set; }
 
+        [Required(ErrorMessage = "The Name field is required.")]
         public string? Name { get; set; }
 
+        [Required(ErrorMessage = "The Country field is required.")]
         public string? Country { get; set; }
 
+        [Required(ErrorMessage = "The Webpages field is required.")]
         public List<string?>? Webpages { get; set; }
 
         public bool IsBookmark { get; set; }
